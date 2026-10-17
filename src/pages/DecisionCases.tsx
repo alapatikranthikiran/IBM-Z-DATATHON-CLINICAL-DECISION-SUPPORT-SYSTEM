@@ -19,6 +19,7 @@ import {
   AlertOctagon,
   Stethoscope,
   Bed,
+  Search,
 } from 'lucide-react';
 import { EvidenceGraph } from '../components/EvidenceGraph';
 import { ActionOption, DecisionCase, GeminiChallenge, GeminiExplanation } from '../types';
@@ -40,6 +41,8 @@ export const DecisionCases: React.FC = () => {
 
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id || null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [acuityFilter, setAcuityFilter] = useState<'all' | 'emergent' | 'urgent'>('all');
 
   // Rejection & Escalation modal states
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
@@ -59,6 +62,19 @@ export const DecisionCases: React.FC = () => {
   const activeCase = cases.find((c) => c.id === selectedCaseId) || cases[0];
   const caseOptions = activeCase ? optionsMap[activeCase.id] || [] : [];
   const chosenAction = caseOptions.find((o) => o.id === selectedActionId) || caseOptions[0];
+
+  const filteredCases = cases.filter((c) => {
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      c.title.toLowerCase().includes(query) ||
+      c.correlationReason.toLowerCase().includes(query) ||
+      c.affectedEntities.some((e) => e.toLowerCase().includes(query));
+    if (!matchesSearch) return false;
+    if (acuityFilter === 'emergent') return c.severity >= 80;
+    if (acuityFilter === 'urgent') return c.severity < 80;
+    return true;
+  });
 
   // Expiry check: Has conditions changed since recommendation was synthesized?
   const isRecommendationStale =
@@ -212,25 +228,67 @@ export const DecisionCases: React.FC = () => {
         {/* Left Column: Triage Registry (4 cols) */}
         <div className="lg:col-span-4 flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-mono font-bold text-slate-400 uppercase">
-              Triage Registry ({cases.length})
+            <span className="text-xs font-mono font-bold text-slate-300 uppercase">
+              Triage Registry ({filteredCases.length}/{cases.length})
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">Select patient case</span>
+            <span className="text-[10px] text-slate-400 font-mono">Patient cases</span>
           </div>
 
-          {cases.length === 0 ? (
-            <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-lg">
-              <p className="text-xs text-slate-400">No active triage cases.</p>
-              <button
-                onClick={() => triggerScenario('one_escalating_incident')}
-                className="mt-3 px-3 py-1.5 rounded bg-teal-600 text-slate-950 text-xs font-bold"
-              >
-                Inject Emergency Inflow
-              </button>
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search patient, bed, or condition..."
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-teal-500/60 transition-colors"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px]">
+              {(['all', 'emergent', 'urgent'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setAcuityFilter(filter)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium capitalize transition-colors ${
+                    acuityFilter === filter
+                      ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                      : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  {filter === 'all' ? 'All Cases' : filter === 'emergent' ? 'ESI 1-2 Emergent' : 'ESI 3 Urgent'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredCases.length === 0 ? (
+            <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-xl">
+              <p className="text-xs text-slate-400">No triage cases match filter.</p>
+              {cases.length === 0 ? (
+                <button
+                  onClick={() => triggerScenario('one_escalating_incident')}
+                  className="mt-3 px-3 py-1.5 rounded-lg bg-teal-600 text-slate-950 text-xs font-bold"
+                >
+                  Inject Sample Inflow
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setAcuityFilter('all');
+                  }}
+                  className="mt-2 text-xs text-teal-400 hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2 overflow-y-auto max-h-[720px] pr-1">
-              {cases.map((c) => {
+              {filteredCases.map((c) => {
                 const isSelected = activeCase?.id === c.id;
                 const isEmergent = c.severity >= 80;
 
@@ -244,17 +302,23 @@ export const DecisionCases: React.FC = () => {
                       setGeminiChallenge(null);
                       setActionFeedback(null);
                     }}
-                    className={`cursor-pointer rounded-lg p-3.5 border transition-colors text-left flex flex-col gap-2 ${
+                    className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col gap-2 ${
                       isSelected
-                        ? 'bg-slate-900 border-teal-500'
-                        : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        ? 'bg-slate-900 border-teal-500 shadow-sm ring-1 ring-teal-500/20'
+                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900/50'
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs font-mono">
-                      <span className={`font-bold ${isEmergent ? 'text-rose-400' : 'text-amber-400'}`}>
-                        {isEmergent ? 'ESI 1-2 (EMERGENT)' : 'ESI 3 (URGENT)'}
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          isEmergent
+                            ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                            : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {isEmergent ? 'ESI 1-2 EMERGENT' : 'ESI 3 URGENT'}
                       </span>
-                      <span className="text-slate-400">v{c.stateVersion}</span>
+                      <span className="text-slate-400 text-[10px]">v{c.stateVersion}</span>
                     </div>
 
                     <div>
@@ -262,9 +326,9 @@ export const DecisionCases: React.FC = () => {
                       <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{c.correlationReason}</p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[11px] font-mono">
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/80 text-[11px] font-mono">
                       <span className="text-slate-400">Acuity Score:</span>
-                      <span className="font-bold text-teal-400 tabular-nums">{c.priorityScore}/100</span>
+                      <span className="font-bold text-teal-300 tabular-nums">{c.priorityScore}/100</span>
                     </div>
                   </div>
                 );

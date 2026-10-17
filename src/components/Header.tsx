@@ -8,14 +8,16 @@ import {
   UserCheck,
   Send,
   Sparkles,
-  Layers,
   Globe,
-  Shield,
   Activity,
+  Layers,
+  ChevronDown,
+  Bot,
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { InjectEventModal } from './InjectEventModal';
 import { GuidedDemoModal } from './GuidedDemoModal';
+import { ClinicalChatDrawer } from './ClinicalChatDrawer';
 import { LANGUAGES, SupportedLanguage } from '../i18n';
 
 export const Header: React.FC = () => {
@@ -40,11 +42,13 @@ export const Header: React.FC = () => {
   } = useEngine();
 
   const [showInjectModal, setShowInjectModal] = useState(false);
+  const [showSimControls, setShowSimControls] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
 
-  // Format simulated timestamp (clinical triage clock)
+  // Format simulated timestamp
   const simDate = new Date(simTime);
-  const timeFormatted = simDate.toLocaleTimeString('en-US', { hour12: false });
-  const dateFormatted = simDate.toISOString().slice(0, 10);
+  const timeFormatted = simDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const dateFormatted = simDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
   const roles: { id: UserRole; labelKey: string }[] = [
     { id: 'Operator', labelKey: 'roleOperator' },
@@ -55,164 +59,185 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-14 border-b border-slate-800 bg-slate-950 px-4 flex items-center justify-between gap-4 select-none sticky top-0 z-40 text-slate-200">
-        {/* Zone 1: Clinical Brand & Active Ward Protocol */}
-        <div className="flex items-center gap-4 shrink-0">
+      <header className="h-15 border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 select-none sticky top-0 z-40 text-slate-200">
+        {/* Brand & Hospital Station */}
+        <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-teal-600 rounded flex items-center justify-center text-slate-950 font-bold">
-              <Activity className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold shadow-sm">
+              <Activity className="w-4 h-4 text-teal-400 stroke-[2.5]" />
             </div>
             <div>
-              <span className="text-sm font-bold tracking-tight text-white block leading-tight">
-                AEGIS <span className="text-teal-400 font-mono">CDSS</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono tracking-wider">
-                CLINICAL DECISION SUPPORT
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold tracking-tight text-white">
+                  AEGIS <span className="text-teal-400 font-mono text-xs">CDSS</span>
+                </span>
+                <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                  Acute Care
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400 hidden md:block">
+                Clinical Decision Support System
               </span>
             </div>
           </div>
 
-          <span className="text-slate-700 hidden sm:inline" aria-hidden="true">|</span>
+          <div className="h-4 w-px bg-slate-800 hidden lg:block mx-1" />
 
-          {/* Active Clinical Protocol Selector */}
-          <div className="hidden md:flex items-center gap-2">
-            <span className="text-[11px] font-mono text-slate-400 uppercase">
-              {t('activePack')}:
-            </span>
-            <select
-              value={activePack?.id || ''}
-              onChange={(e) => changePack(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs font-semibold text-teal-300 outline-none cursor-pointer hover:border-slate-700"
-            >
-              {packs.map((p) => (
-                <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100">
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Clinical Simulation Disclaimer - Crisp, unboxed with hairline marker */}
-          <div className="hidden xl:flex items-center gap-2 text-[11px] font-mono text-amber-300 border-l border-slate-800 pl-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span>{t('simulatedData')}</span>
-            <span className="text-slate-500">·</span>
-            <span className="text-slate-400 text-[10px]">{t('hipaaCompliant')}</span>
-          </div>
-        </div>
-
-        {/* Zone 2: Telemetry Clock, Stream Status, Simulation Speed */}
-        <div className="hidden lg:flex items-center gap-3">
-          {/* Triage Clock */}
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-300 bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-slate-400">{dateFormatted}</span>
-            <span className="text-teal-300 font-bold tabular-nums">{timeFormatted}</span>
-          </div>
-
-          {/* Stream telemetry indicator */}
-          <div className="flex items-center gap-1.5 text-xs font-mono text-slate-300">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                streamConnected ? 'bg-teal-400' : 'bg-rose-500'
-              }`}
-            />
-            <span className={streamConnected ? 'text-teal-300' : 'text-rose-400'}>
-              {streamConnected ? 'HL7/FHIR STREAM' : 'LOCAL CACHE'}
-            </span>
-          </div>
-
-          {/* Clock controls */}
-          <div className="flex items-center gap-1 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
-            <button
-              onClick={togglePlayPause}
-              className={`p-1 rounded text-xs transition-colors ${
-                isRunning ? 'text-amber-300 hover:bg-slate-800' : 'text-teal-300 hover:bg-slate-800'
-              }`}
-              title={isRunning ? 'Pause clinical clock' : 'Resume clinical clock'}
-            >
-              {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              onClick={resetSimulation}
-              className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-              title="Reset triage clock"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-            <div className="flex items-center border-l border-slate-800 pl-1 ml-0.5 text-[11px] font-mono">
-              {[1, 2, 5].map((speed) => (
-                <button
-                  key={speed}
-                  onClick={() => setSimSpeed(speed)}
-                  className={`px-1.5 py-0.5 rounded ${
-                    simSpeed === speed ? 'bg-slate-800 text-teal-300 font-bold' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {speed}x
-                </button>
-              ))}
+          {/* Clinical Protocol Selector */}
+          <div className="hidden lg:flex items-center gap-2">
+            <span className="text-[11px] text-slate-400 font-medium">{t('activePack')}:</span>
+            <div className="relative">
+              <select
+                value={activePack?.id || ''}
+                onChange={(e) => changePack(e.target.value)}
+                className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-teal-300 text-xs font-medium rounded-md pl-2.5 pr-7 py-1 outline-none appearance-none cursor-pointer transition-colors"
+              >
+                {packs.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </div>
 
-        {/* Zone 3: Language Picker, Role Selector, and Primary Actions */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          {/* Multi-Language Selector Dropdown */}
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs">
-            <Globe className="w-3.5 h-3.5 text-teal-400" />
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
-              className="bg-transparent text-xs font-semibold text-slate-200 outline-none cursor-pointer"
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-slate-900 text-slate-100">
-                  {lang.flag} {lang.nativeName}
-                </option>
-              ))}
-            </select>
+        {/* Center: Streamlined Clinical Time & Simulation Capsule */}
+        <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 gap-2.5 text-xs font-mono shadow-sm">
+            {/* Stream Status */}
+            <div className="flex items-center gap-1.5" title={streamConnected ? 'HL7/FHIR telemetry active' : 'Disconnected'}>
+              <span className={`w-2 h-2 rounded-full ${streamConnected ? 'bg-teal-400 ring-2 ring-teal-400/20 animate-pulse' : 'bg-rose-500'}`} />
+              <span className="text-[11px] font-medium text-slate-300 hidden xl:inline">
+                {streamConnected ? 'HL7/FHIR' : 'OFFLINE'}
+              </span>
+            </div>
+
+            <span className="text-slate-700">|</span>
+
+            {/* Time display */}
+            <div className="flex items-center gap-1.5 text-slate-300">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-slate-400 text-[11px] hidden xl:inline">{dateFormatted}</span>
+              <span className="text-teal-300 font-bold tabular-nums">{timeFormatted}</span>
+            </div>
+
+            <span className="text-slate-700">|</span>
+
+            {/* Play/Pause & Speed */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={togglePlayPause}
+                className={`p-1 rounded transition-colors ${
+                  isRunning ? 'text-amber-400 hover:bg-slate-800' : 'text-teal-400 hover:bg-slate-800'
+                }`}
+                title={isRunning ? 'Pause simulation' : 'Resume simulation'}
+              >
+                {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={resetSimulation}
+                className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                title="Reset simulation time"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+              <div className="flex items-center gap-0.5 ml-1 border-l border-slate-800 pl-1.5 text-[11px]">
+                {[1, 2, 5].map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => setSimSpeed(speed)}
+                    className={`px-1.5 py-0.5 rounded transition-colors ${
+                      simSpeed === speed
+                        ? 'bg-teal-500/20 text-teal-300 font-bold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Controls & User Actions */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Multi-Language Selector */}
+          <div className="relative">
+            <div className="flex items-center bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-md px-2 py-1 gap-1.5 transition-colors">
+              <Globe className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+                className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer pr-4 appearance-none"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code} className="bg-slate-900 text-slate-100">
+                    {lang.flag} {lang.nativeName}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
+            </div>
           </div>
 
           {/* Clinical User Role */}
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs">
-            <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-            <select
-              value={activeRole}
-              onChange={(e) => setActiveRole(e.target.value as UserRole)}
-              className="bg-transparent text-xs font-semibold text-slate-200 outline-none cursor-pointer"
-            >
-              {roles.map((r) => (
-                <option key={r.id} value={r.id} className="bg-slate-900 text-slate-100">
-                  {t(r.labelKey)}
-                </option>
-              ))}
-            </select>
+          <div className="relative hidden sm:block">
+            <div className="flex items-center bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-md px-2 py-1 gap-1.5 transition-colors">
+              <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <select
+                value={activeRole}
+                onChange={(e) => setActiveRole(e.target.value as UserRole)}
+                className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer pr-4 appearance-none"
+              >
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id} className="bg-slate-900 text-slate-100">
+                    {t(r.labelKey)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
+            </div>
           </div>
 
-          {/* Transmit Vitals Spike (Inject Event) */}
+          {/* Quick Action: Inject Vitals Spike */}
           <button
             onClick={() => setShowInjectModal(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-200 transition-colors"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition-colors"
+            title="Inject simulated patient telemetry spike"
           >
             <Send className="w-3.5 h-3.5 text-teal-400" />
             <span>{t('injectEventBtn')}</span>
           </button>
 
+          {/* Gemini Clinical Copilot CTA */}
+          <button
+            onClick={() => setShowChatDrawer(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/35 text-teal-300 font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+            title="Open Gemini Clinical Copilot"
+          >
+            <Bot className="w-3.5 h-3.5 text-teal-400" />
+            <span className="hidden sm:inline">AI Copilot</span>
+          </button>
+
           {/* Clinical Guided Demo CTA */}
           <button
             onClick={() => setRunGuidedDemo(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-xs transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-xs transition-colors shadow-sm cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-slate-950" />
-            <span>{t('guidedDemoBtn')}</span>
+            <span className="hidden sm:inline">{t('guidedDemoBtn')}</span>
+            <span className="sm:hidden">Demo</span>
           </button>
         </div>
       </header>
 
-      {/* Modals */}
+      {/* Modals & Drawers */}
       {showInjectModal && <InjectEventModal onClose={() => setShowInjectModal(false)} />}
       {runGuidedDemo && <GuidedDemoModal onClose={() => setRunGuidedDemo(false)} />}
+      <ClinicalChatDrawer isOpen={showChatDrawer} onClose={() => setShowChatDrawer(false)} />
     </>
   );
 };

@@ -10,10 +10,9 @@ import { ResourcesPage } from './pages/ResourcesPage';
 import { DecisionLedger } from './pages/DecisionLedger';
 import { ReliabilityConsole } from './pages/ReliabilityConsole';
 import { SettingsPage } from './pages/SettingsPage';
-import { ShieldCheck, Activity, Stethoscope } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { activeTab, t, language } = useEngine();
+  const { activeTab, language } = useEngine();
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -39,11 +38,14 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div
+      className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500/30 selection:text-teal-200"
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+    >
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-slate-950 h-[calc(100vh-3.5rem)]">
+        <main className="flex-1 overflow-y-auto bg-slate-950 h-[calc(100vh-3.75rem)]">
           {renderActiveTab()}
         </main>
       </div>

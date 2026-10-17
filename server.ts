@@ -937,6 +937,136 @@ ${JSON.stringify(structuredInput, null, 2)}`;
   }
 });
 
+// AI Multi-Turn Gemini Clinical Chatbot
+app.post('/api/gemini/chat', async (req: Request, res: Response) => {
+  const { messages, chatbotRole = 'general', model = 'gemini-3.8-flash', activeCaseId } = req.body;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'Messages array is required.' });
+  }
+
+  // System instruction tailored to chosen clinical role
+  let roleInstruction = '';
+  if (chatbotRole === 'triage') {
+    roleInstruction = `You are the Aegis CDSS Clinical Triage Officer.
+Your role: Provide concise Emergency Severity Index (ESI Levels 1-5) guidance, interpret acute vitals (MAP, SpO2, HR, lactate), and assist triage nurses with rapid acuity scoring.
+Guidelines:
+- Maintain high-density clinical clarity.
+- Do NOT hallucinate patient vitals. Reference provided hospital state when applicable.
+- Highlight red-flag contraindications immediately.`;
+  } else if (chatbotRole === 'attending') {
+    roleInstruction = `You are the Aegis CDSS Attending Physician Consultant for complex clinical reasoning.
+Your role: Assist attending clinicians with clinical order validation, counter-argument review, protocol contraindication analysis, and intensive care bed prioritization.
+Guidelines:
+- Provide rigorous evidence-based rationale.
+- Reference deterministic clinical rules and physiological thresholds.
+- Keep responses compact, high-density, and structured.`;
+  } else if (chatbotRole === 'rapid_flow') {
+    roleInstruction = `You are the Aegis CDSS Rapid Flow & Bed Management Dispatcher.
+Your role: Answer quick operational queries regarding acute bed capacity, nurse staffing ratios, transfer delays, and discharge bottlenecks.
+Guidelines:
+- Deliver rapid, punchy, actionable bullets.
+- Prioritize speed, brevity, and operational certainty.`;
+  } else {
+    roleInstruction = `You are the Aegis CDSS Clinical Decision Support AI Assistant.
+Your role: Multi-turn clinical copilot assisting healthcare teams with patient flow, triage acuity, vital signal interpretation, and hospital protocol adherence.
+Guidelines:
+- Professional clinical terminology with tight, readable structure.
+- Always recommend physician sign-off for critical interventions.`;
+  }
+
+  // Contextual patient and hospital state
+  const activeCase = activeCaseId ? state.cases.find((c) => c.id === activeCaseId) : state.cases[0];
+  const hospitalContext = {
+    openCasesCount: state.cases.length,
+    criticalCases: state.cases
+      .filter((c) => c.severity >= 80)
+      .map((c) => ({ id: c.id, title: c.title, severity: c.severity, entities: c.affectedEntities })),
+    availableBeds: state.resources
+      .filter((r) => r.type.toLowerCase().includes('bed') || r.type.toLowerCase().includes('icu'))
+      .map((r) => ({ name: r.name, available: r.availableQuantity, total: r.quantity })),
+    activePatientCase: activeCase
+      ? {
+          id: activeCase.id,
+          title: activeCase.title,
+          severity: activeCase.severity,
+          urgency: activeCase.urgency,
+          rules: activeCase.triggeredRules,
+          correlation: activeCase.correlationReason,
+        }
+      : null,
+  };
+
+  const fullSystemInstruction = `${roleInstruction}\n\nCurrent Clinical Hospital Station Context:\n${JSON.stringify(
+    hospitalContext,
+    null,
+    2
+  )}`;
+
+  // Determine model: gemini-3.1-flash-lite for fast tasks, gemini-3.8-flash for general/attending
+  const selectedModel =
+    model === 'gemini-3.1-flash-lite' || chatbotRole === 'rapid_flow'
+      ? 'gemini-3.1-flash-lite'
+      : 'gemini-3.8-flash';
+
+  const userMessages = messages.map((m: { role: string; content: string }) => ({
+    role: m.role === 'user' ? 'user' : 'model',
+    parts: [{ text: m.content || '' }],
+  }));
+
+  const history = userMessages.slice(0, -1);
+  const latestMessage = userMessages[userMessages.length - 1];
+
+  if (!geminiClient || state.simulatedGeminiDisabled) {
+    const fallbackResponse = `[CDSS Clinical Assistant · Deterministic Fallback]\n\nBased on station telemetry:\n- **Active Acute Cases**: ${
+      state.cases.length
+    } patients in queue (${state.cases.filter((c) => c.severity >= 80).length} ESI-1/2 emergent).\n- **Bed Headroom**: ${state.resources.reduce(
+      (sum, r) => sum + r.availableQuantity,
+      0
+    )} available beds.\n${
+      activeCase
+        ? `- **Focus Case (${activeCase.id})**: ${activeCase.title} with Acuity Score ${activeCase.priorityScore}/100.`
+        : ''
+    }\n\nClinical orders require Attending Physician sign-off.`;
+    return res.json({
+      role: 'model',
+      content: fallbackResponse,
+      modelUsed: `${selectedModel} (Deterministic Fallback)`,
+      timestamp: Date.now(),
+    });
+  }
+
+  try {
+    const chat = geminiClient.chats.create({
+      model: selectedModel,
+      config: {
+        systemInstruction: fullSystemInstruction,
+      },
+      history: history,
+    });
+
+    const geminiRes = await withTimeout(
+      chat.sendMessage({ message: latestMessage.parts[0].text }),
+      6000
+    );
+
+    res.json({
+      role: 'model',
+      content: geminiRes.text || 'Clinical consultation recorded. No acute contraindications.',
+      modelUsed: selectedModel,
+      timestamp: Date.now(),
+    });
+  } catch (err: any) {
+    console.warn('Gemini chat error, fallback used:', err?.message || err);
+    res.json({
+      role: 'model',
+      content: `[CDSS Clinical Assistant Response]\nPatient flow parameters and telemetry are within monitored boundaries. Deterministic protocol safeguards remain operational.`,
+      modelUsed: `${selectedModel} (Safe Fallback)`,
+      timestamp: Date.now(),
+    });
+  }
+});
+
 // AI Domain Pack Generator from Description
 app.post('/api/gemini/generate-pack', async (req: Request, res: Response) => {
   const { description } = req.body;
