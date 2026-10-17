@@ -1,0 +1,6 @@
+{
+  "name": "Aegis DecisionOS",
+  "description": "Real-Time AI for Critical Decisions. One engine. Any critical decision. Humans stay in control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
