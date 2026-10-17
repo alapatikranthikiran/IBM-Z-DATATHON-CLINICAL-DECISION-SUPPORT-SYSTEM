@@ -13,11 +13,15 @@ import {
   Layers,
   ChevronDown,
   Bot,
+  Mic,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { InjectEventModal } from './InjectEventModal';
 import { GuidedDemoModal } from './GuidedDemoModal';
 import { ClinicalChatDrawer } from './ClinicalChatDrawer';
+import { VoiceAssistantModal } from './VoiceAssistantModal';
 import { LANGUAGES, SupportedLanguage } from '../i18n';
 
 export const Header: React.FC = () => {
@@ -38,12 +42,15 @@ export const Header: React.FC = () => {
     setRunGuidedDemo,
     language,
     setLanguage,
+    theme,
+    toggleTheme,
     t,
   } = useEngine();
 
   const [showInjectModal, setShowInjectModal] = useState(false);
   const [showSimControls, setShowSimControls] = useState(false);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   // Format simulated timestamp
   const simDate = new Date(simTime);
@@ -202,6 +209,26 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
+          {/* Light / Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs font-medium text-slate-300 hover:text-white transition-all shadow-sm cursor-pointer select-none"
+            title={theme === 'dark' ? 'Switch to Daylight Clean Mode' : 'Switch to High-Contrast Dark Mode'}
+            aria-label="Toggle theme mode"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="hidden xl:inline text-[11px] font-medium text-slate-300">Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span className="hidden xl:inline text-[11px] font-medium text-slate-700">Dark</span>
+              </>
+            )}
+          </button>
+
           {/* Quick Action: Inject Vitals Spike */}
           <button
             onClick={() => setShowInjectModal(true)}
@@ -222,6 +249,17 @@ export const Header: React.FC = () => {
             <span className="hidden sm:inline">AI Copilot</span>
           </button>
 
+          {/* Clinical Voice Assistant CTA */}
+          <button
+            onClick={() => setShowVoiceModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/35 text-cyan-300 font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+            title="Open Clinical Voice Assistant"
+          >
+            <Mic className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden md:inline">Voice Assistant</span>
+            <span className="md:hidden">Voice</span>
+          </button>
+
           {/* Clinical Guided Demo CTA */}
           <button
             onClick={() => setRunGuidedDemo(true)}
@@ -238,6 +276,7 @@ export const Header: React.FC = () => {
       {showInjectModal && <InjectEventModal onClose={() => setShowInjectModal(false)} />}
       {runGuidedDemo && <GuidedDemoModal onClose={() => setRunGuidedDemo(false)} />}
       <ClinicalChatDrawer isOpen={showChatDrawer} onClose={() => setShowChatDrawer(false)} />
+      <VoiceAssistantModal isOpen={showVoiceModal} onClose={() => setShowVoiceModal(false)} />
     </>
   );
 };

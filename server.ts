@@ -1067,6 +1067,88 @@ Guidelines:
   }
 });
 
+// AI Voice Assistant Speech Generation (TTS) via gemini-3.8-flash-lite-tts
+app.post('/api/gemini/tts', async (req: Request, res: Response) => {
+  const { text, voice = 'Kore' } = req.body;
+
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Text parameter is required for speech synthesis.' });
+  }
+
+  // Truncate to reasonable length for clinical safety
+  const textToSynthesize = text.slice(0, 1500);
+
+  if (!geminiClient || state.simulatedGeminiDisabled) {
+    return res.json({
+      audioData: null,
+      mimeType: null,
+      voice,
+      fallbackToBrowser: true,
+      message: 'Gemini TTS unavailable; using browser speech synthesis.',
+    });
+  }
+
+  try {
+    const validVoices = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'];
+    const selectedVoice = validVoices.includes(voice) ? voice : 'Kore';
+
+    const ttsRes = await withTimeout(
+      geminiClient.models.generateContent({
+        model: 'gemini-3.8-flash-lite-tts',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: textToSynthesize,
+                speechMetadata: {
+                  style: 'Calm, clear, authoritative clinical decision assistant',
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: selectedVoice },
+            },
+          },
+        },
+      }),
+      8000
+    );
+
+    const base64Audio = ttsRes.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+    if (base64Audio) {
+      return res.json({
+        audioData: base64Audio,
+        mimeType: 'audio/wav',
+        voice: selectedVoice,
+        fallbackToBrowser: false,
+      });
+    }
+
+    return res.json({
+      audioData: null,
+      mimeType: null,
+      voice: selectedVoice,
+      fallbackToBrowser: true,
+    });
+  } catch (err: any) {
+    console.warn('Gemini TTS error, falling back to browser synthesis:', err?.message || err);
+    return res.json({
+      audioData: null,
+      mimeType: null,
+      voice,
+      fallbackToBrowser: true,
+      error: err?.message,
+    });
+  }
+});
+
 // AI Domain Pack Generator from Description
 app.post('/api/gemini/generate-pack', async (req: Request, res: Response) => {
   const { description } = req.body;

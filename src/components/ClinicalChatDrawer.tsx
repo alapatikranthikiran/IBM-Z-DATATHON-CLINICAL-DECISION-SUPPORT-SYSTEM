@@ -17,7 +17,12 @@ import {
   Clock,
   Shield,
   Zap,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import { speakClinicalText, stopSpeaking, isSpeechRecognitionSupported } from '../utils/voiceService';
 
 export interface ChatMessage {
   id: string;
@@ -54,6 +59,87 @@ export const ClinicalChatDrawer: React.FC<ClinicalChatDrawerProps> = ({ isOpen, 
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [isListeningMic, setIsListeningMic] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Stop audio on unmount
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
+
+  // Stop audio and recognition if closed
+  useEffect(() => {
+    if (!isOpen) {
+      stopSpeaking();
+      setPlayingMessageId(null);
+      if (isListeningMic && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+        setIsListeningMic(false);
+      }
+    }
+  }, [isOpen]);
+
+  const handleToggleMic = () => {
+    if (!isSpeechRecognitionSupported()) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    if (isListeningMic) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+      setIsListeningMic(false);
+      return;
+    }
+
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      recognitionRef.current = rec;
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => setIsListeningMic(true);
+      rec.onresult = (e: any) => {
+        const spoken = e.results[0]?.[0]?.transcript || '';
+        if (spoken) {
+          setInputPrompt((prev) => (prev ? `${prev} ${spoken}` : spoken));
+        }
+        setIsListeningMic(false);
+      };
+      rec.onerror = () => setIsListeningMic(false);
+      rec.onend = () => setIsListeningMic(false);
+      rec.start();
+    } catch (e) {
+      setIsListeningMic(false);
+    }
+  };
+
+  const handlePlayMessageAudio = (msg: ChatMessage) => {
+    if (playingMessageId === msg.id) {
+      stopSpeaking();
+      setPlayingMessageId(null);
+      return;
+    }
+
+    setPlayingMessageId(msg.id);
+    speakClinicalText(msg.content, {
+      voice: 'Kore',
+      onStart: () => setPlayingMessageId(msg.id),
+      onEnd: () => setPlayingMessageId(null),
+      onError: () => setPlayingMessageId(null),
+    });
+  };
 
   // Auto-scroll to bottom of conversation thread
   useEffect(() => {
@@ -300,11 +386,37 @@ export const ClinicalChatDrawer: React.FC<ClinicalChatDrawerProps> = ({ isOpen, 
                     isUser ? 'text-slate-900/80 justify-end' : 'text-slate-400 justify-between'
                   }`}
                 >
-                  <span>
-                    {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {!isUser && m.modelUsed && (
-                    <span className="text-teal-400/90 font-mono">[{m.modelUsed}]</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>
+                      {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {!isUser && m.modelUsed && (
+                      <span className="text-teal-400/90 font-mono">[{m.modelUsed}]</span>
+                    )}
+                  </div>
+
+                  {!isUser && (
+                    <button
+                      onClick={() => handlePlayMessageAudio(m)}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                        playingMessageId === m.id
+                          ? 'bg-cyan-500/20 text-cyan-300 font-semibold animate-pulse'
+                          : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800'
+                      }`}
+                      title={playingMessageId === m.id ? 'Stop audio' : 'Listen via Gemini TTS'}
+                    >
+                      {playingMessageId === m.id ? (
+                        <>
+                          <VolumeX className="w-3 h-3 text-cyan-400" />
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3 h-3" />
+                          <span>Listen</span>
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>
@@ -342,15 +454,31 @@ export const ClinicalChatDrawer: React.FC<ClinicalChatDrawerProps> = ({ isOpen, 
           }}
           className="flex items-center gap-2"
         >
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder={`Ask ${roleDefinitions.find((r) => r.id === chatbotRole)?.label}...`}
-            disabled={isLoading}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-teal-500/60 transition-colors"
-          />
+          <div className="relative flex-1 flex items-center">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputPrompt}
+              onChange={(e) => setInputPrompt(e.target.value)}
+              placeholder={`Ask ${roleDefinitions.find((r) => r.id === chatbotRole)?.label}...`}
+              disabled={isLoading}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-9 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-teal-500/60 transition-colors"
+            />
+            {/* Microphone Button inside input field */}
+            <button
+              type="button"
+              onClick={handleToggleMic}
+              disabled={isLoading}
+              className={`absolute right-1.5 p-1 rounded-md transition-colors cursor-pointer ${
+                isListeningMic
+                  ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                  : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800'
+              }`}
+              title={isListeningMic ? 'Listening... click to stop' : 'Voice input (Dictate)'}
+            >
+              {isListeningMic ? <MicOff className="w-3.5 h-3.5 text-rose-400" /> : <Mic className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           <button
             type="submit"
             disabled={!inputPrompt.trim() || isLoading}

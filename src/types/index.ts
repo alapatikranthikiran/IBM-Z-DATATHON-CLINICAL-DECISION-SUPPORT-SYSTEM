@@ -14,6 +14,9 @@ export type QualityStatus = z.infer<typeof QualityStatusSchema>;
 export const UserRoleSchema = z.enum(['Operator', 'Supervisor', 'Administrator', 'Auditor']);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
+// Workstation Theme Mode
+export type ThemeMode = 'dark' | 'light';
+
 // Signal Schema
 export const SignalSchema = z.object({
   id: z.string(),

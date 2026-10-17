@@ -9,6 +9,7 @@ import {
   Resource,
   Signal,
   UserRole,
+  ThemeMode,
 } from '../types';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n';
 
@@ -18,6 +19,9 @@ interface EngineContextType {
   simSpeed: number;
   prngSeed: number;
   activeRole: UserRole;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
   activePackId: string;
   activePack: DomainPack | null;
   packs: DomainPack[];
@@ -59,6 +63,52 @@ const EngineContext = createContext<EngineContextType | undefined>(undefined);
 export const EngineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>('command-center');
   const [language, setLanguageState] = useState<SupportedLanguage>('en');
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aegis_theme');
+        if (saved === 'light' || saved === 'dark') return saved;
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          return 'light';
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return 'dark';
+  });
+
+  // Sync theme with HTML class and attribute
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      if (theme === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.setAttribute('data-theme', 'light');
+        root.style.colorScheme = 'light';
+      } else {
+        root.classList.remove('light');
+        root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
+        root.style.colorScheme = 'dark';
+      }
+      try {
+        localStorage.setItem('aegis_theme', theme);
+      } catch {
+        // ignore
+      }
+    }
+  }, [theme]);
+
+  const setTheme = useCallback((newTheme: ThemeMode) => {
+    setThemeState(newTheme);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   const [simTime, setSimTime] = useState<number>(1776400000000);
   const [isRunning, setIsRunning] = useState<boolean>(true);
   const [simSpeed, setSimSpeedState] = useState<number>(1);
@@ -426,6 +476,9 @@ export const EngineProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         activeTab,
         language,
         setLanguage,
+        theme,
+        setTheme,
+        toggleTheme,
         t,
         setActiveTab,
         setActiveRole,

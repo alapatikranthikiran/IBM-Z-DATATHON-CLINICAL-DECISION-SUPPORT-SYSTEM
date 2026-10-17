@@ -6,8 +6,55 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 
-  html {
+  /* Default Dark Mode (Operational Clinical Station) */
+  html,
+  html.dark {
     color-scheme: dark;
+    --app-bg: #030712;
+    --app-card-bg: #0f172a;
+    --app-border: #1e293b;
+    --app-text: #f1f5f9;
+    --app-text-muted: #94a3b8;
+  }
+
+  /* Daylight Surgical Clean Light Mode (High Ambient Ward / Day Station) */
+  html.light {
+    color-scheme: light;
+    
+    /* Semantic slate palette remapping for Tailwind utilities */
+    --color-slate-950: #f8fafc;
+    --color-slate-900: #ffffff;
+    --color-slate-800: #e2e8f0;
+    --color-slate-700: #cbd5e1;
+    --color-slate-600: #94a3b8;
+    --color-slate-500: #64748b;
+    --color-slate-400: #475569;
+    --color-slate-300: #334155;
+    --color-slate-200: #1e293b;
+    --color-slate-100: #0f172a;
+    --color-slate-50: #020617;
+
+    /* High-contrast accessible accents for daylight clinical viewing */
+    --color-teal-300: #0d9488;
+    --color-teal-400: #0f766e;
+    --color-teal-500: #0d9488;
+    --color-cyan-300: #0891b2;
+    --color-cyan-400: #0e7490;
+    --color-amber-300: #d97706;
+    --color-amber-400: #b45309;
+    --color-rose-300: #e11d48;
+    --color-rose-400: #be123c;
+    --color-emerald-300: #059669;
+    --color-emerald-400: #047857;
+
+    --app-bg: #f8fafc;
+    --app-card-bg: #ffffff;
+    --app-border: #e2e8f0;
+    --app-text: #0f172a;
+    --app-text-muted: #475569;
+  }
+
+  html {
     font-size: 13.5px; /* High-density clinical baseline */
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -16,12 +63,71 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #030712;
-    color: #e5e7eb;
     line-height: 1.4; /* Tighter leading to eliminate visual sprawl */
     letter-spacing: -0.011em;
     overflow-x: hidden;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum" 1;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark body {
+    background-color: #030712;
+    color: #e5e7eb;
+  }
+
+  html.light body {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  /* Light mode typography & contrast enhancements */
+  html.light .text-white {
+    color: #0f172a;
+  }
+
+  /* Keep white text on saturated accent buttons and pills */
+  html.light .bg-teal-600 .text-white,
+  html.light .bg-teal-700 .text-white,
+  html.light .bg-rose-600 .text-white,
+  html.light .bg-emerald-600 .text-white,
+  html.light .bg-amber-600 .text-white,
+  html.light .bg-indigo-600 .text-white,
+  html.light .bg-blue-600 .text-white,
+  html.light [data-theme-preserve-white],
+  html.light .preserve-white {
+    color: #ffffff !important;
+  }
+
+  /* Ensure text on teal action buttons remains high-contrast in light mode */
+  html.light button.bg-teal-600,
+  html.light button.bg-teal-500 {
+    color: #042f2e !important;
+  }
+
+  /* Soft card elevation in daylight mode */
+  html.light .bg-slate-900,
+  html.light .bg-slate-900\/90,
+  html.light .bg-slate-900\/80 {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  html.light aside,
+  html.light header {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  /* Light mode form inputs */
+  html.light select,
+  html.light input:not([type="checkbox"]):not([type="radio"]),
+  html.light textarea {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+  }
+
+  html.light select option {
+    background-color: #ffffff;
+    color: #0f172a;
   }
 
   /* Professional Clinical Typography Hierarchy */
@@ -79,12 +185,19 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-  ::-webkit-scrollbar-thumb {
+  html.dark ::-webkit-scrollbar-thumb {
     background: #1f2937;
     border-radius: 9999px;
   }
-  ::-webkit-scrollbar-thumb:hover {
+  html.dark ::-webkit-scrollbar-thumb:hover {
     background: #374151;
+  }
+  html.light ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  html.light ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }
 

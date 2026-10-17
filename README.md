@@ -76,26 +76,40 @@ In high-stress triage, cognitive overload causes misdiagnoses and delays. Aegis 
   - `gemini-3.1-flash-lite`: Low-latency rapid status checks.
 - **Deterministic Offline Fallback**: Guarantees medical responses even during connectivity drops.
 
-### 5. 🧪 Scenario Lab & Stress Testing
+### 5. 🎙️ Clinical Voice Assistant & Speech Synthesis
+- **Hands-Free Speech Dictation**: Web Speech API integration with live acoustic pulse visualizer, interim speech transcription, and hands-free loop.
+- **Gemini 3.8 Flash-Lite TTS**: High-efficiency, low-latency natural clinical voice audio generation (`audio/wav`) via `/api/gemini/tts`.
+- **Configurable Voice Personas**: Toggle between clinical voices (*Kore*, *Fenrir*, *Puck*, *Zephyr*, *Charon*) tailored for emergency and ICU environments.
+- **Clinical Voice Command & Intent Recognition**: Automatically interprets and navigates on voice commands:
+  - *"Assess active ESI priority"*
+  - *"Check ICU and acute bed headroom"*
+  - *"Open patient decision cases"*
+  - *"Trigger emergency surge simulation"*
+  - *"Transmit telemetry vitals spike"*
+  - *"Go to clinical command center"*
+- **Instant Audio Playback**: One-click "Listen" audio playback for any message in the chat drawer or voice dialog.
+- **Resilient Zero-Latency Fallback**: Automatically switches to browser `window.speechSynthesis` when running in offline or air-gapped environments.
+
+### 6. 🧪 Scenario Lab & Stress Testing
 - Test hospital systems against synthetic edge cases:
   - **Mass Casualty Incident (MCI)**: Sudden influx of multi-trauma admissions.
   - **Telemetry Anomaly Spike**: Severe sepsis cascade vs. monitor lead detachment.
   - **ICU Bed & Ventilator Saturation**: Resource allocation optimization under strict triage guidelines.
 
-### 6. 🛡️ Reliability & Circuit Breaker Console
+### 7. 🛡️ Reliability & Circuit Breaker Console
 - Inspect CDSS engine health in real time:
   - Telemetry pipeline latency (sub-50ms processing).
   - Protocol drift tracking and false positive rates.
   - Automatic circuit breakers that disengage AI advisory if confidence drops below safety thresholds.
 
-### 7. 📦 Domain Pack Studio
+### 8. 📦 Domain Pack Studio
 - Extensible domain architecture. Seamlessly switch between or create domain packs:
   - **Hospital Emergency Medicine** (ED/ICU Triage)
   - **Disaster & Mass Casualty Response**
   - **Industrial Process & Manufacturing Safety**
-- Includes AI-powered pack generation from clinical guidelines or operational SOPs.
+  - Includes AI-powered pack generation from clinical guidelines or operational SOPs.
 
-### 8. 🌐 Multilingual & RTL Support
+### 9. 🌐 Multilingual & RTL Support
 - Full internationalization support with instant language switching:
   - 🇺🇸 English (`en`)
   - 🇪🇸 Spanish (`es`)
